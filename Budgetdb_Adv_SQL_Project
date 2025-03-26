@@ -1,0 +1,111 @@
+--Create a table for budget data
+CREATE TABLE BudgetData (
+    BudgetID INT IDENTITY(1,1) PRIMARY KEY,
+    Department VARCHAR(100),
+    Category VARCHAR(100),         -- e.g., "Salary", "Operations", "Marketing", etc.
+    BudgetAmount DECIMAL(15,2),     -- The allocated budget for the category
+    ActualAmount DECIMAL(15,2),     -- The actual expenditure for the category
+    MonthYear VARCHAR(7),           -- Format: 'YYYY-MM' (e.g., '2023-01')
+    DateCreated DATETIME DEFAULT GETDATE()
+);
+
+--Insert sample budget and actual data
+INSERT INTO BudgetData (Department, Category, BudgetAmount, ActualAmount, MonthYear)
+VALUES
+    ('Sales', 'Salary', 50000, 48000, '2023-01'),
+    ('Sales', 'Operations', 15000, 16000, '2023-01'),
+    ('Marketing', 'Salary', 30000, 29000, '2023-01'),
+    ('Marketing', 'Advertising', 25000, 27000, '2023-01'),
+    ('IT', 'Salary', 45000, 46000, '2023-01'),
+    ('IT', 'Software', 20000, 19000, '2023-01'),
+    ('Sales', 'Salary', 50000, 51000, '2023-02'),
+    ('Sales', 'Operations', 15000, 14000, '2023-02'),
+    ('Marketing', 'Salary', 30000, 31000, '2023-02'),
+    ('Marketing', 'Advertising', 25000, 23000, '2023-02'),
+    ('IT', 'Salary', 45000, 44000, '2023-02'),
+    ('IT', 'Software', 20000, 21000, '2023-02');
+
+--View the data inserted
+SELECT * FROM BudgetData;
+
+--Calculating Budget vs. Actual for each Department and Category
+SELECT 
+    Department,
+    Category,
+    SUM(BudgetAmount) AS TotalBudget,
+    SUM(ActualAmount) AS TotalActual,
+    SUM(ActualAmount) - SUM(BudgetAmount) AS BudgetVariance,
+    (SUM(ActualAmount) / SUM(BudgetAmount)) * 100 AS BudgetVariancePercentage
+FROM BudgetData
+GROUP BY Department, Category
+ORDER BY Department, Category;
+
+--Creating a budget summary report (Department level)
+SELECT 
+    Department,
+    SUM(BudgetAmount) AS TotalBudget,
+    SUM(ActualAmount) AS TotalActual,
+    SUM(ActualAmount) - SUM(BudgetAmount) AS BudgetVariance,
+    (SUM(ActualAmount) / SUM(BudgetAmount)) * 100 AS BudgetVariancePercentage
+FROM BudgetData
+GROUP BY Department
+ORDER BY Department;
+
+--Tracking the budget variance over multiple months (Trend Analysis)
+SELECT 
+    Department,
+    Category,
+    MonthYear,
+    BudgetAmount,
+    ActualAmount,
+    ActualAmount - BudgetAmount AS BudgetVariance,
+   CAST(FORMAT(ROUND((ActualAmount / BudgetAmount) * 100, 2), 'N2') AS NVARCHAR(10)) + '%' AS BudgetVariancePercentage
+FROM BudgetData
+ORDER BY Department, Category, MonthYear;
+
+--Identifying departments where Actual > Budget
+SELECT 
+    Department,
+    Category,
+    MonthYear,
+    BudgetAmount,
+    ActualAmount,
+    ActualAmount - BudgetAmount AS BudgetVariance
+FROM BudgetData
+WHERE ActualAmount > BudgetAmount
+ORDER BY BudgetVariance DESC;
+
+--Calculating the total budget and actual expenditure across all departments
+SELECT 
+    SUM(BudgetAmount) AS TotalBudget,
+    SUM(ActualAmount) AS TotalActual,
+    SUM(ActualAmount) - SUM(BudgetAmount) AS TotalBudgetVariance
+FROM BudgetData;
+
+--Create a forecast for the next month using a simple percentage increase based on previous months
+WITH MonthlyForecast AS (
+    SELECT 
+        Department,
+        Category,
+        SUM(BudgetAmount) AS TotalBudget
+    FROM BudgetData
+    WHERE MonthYear = '2023-02' -- Last month
+    GROUP BY Department, Category
+)
+SELECT 
+    Department,
+    Category,
+    TotalBudget,
+    TotalBudget * 1.05 AS ForecastNextMonth -- 5% forecast increase
+FROM MonthlyForecast;
+
+--Monitoring performance of each category in each department by calculating the **variance percentage** between budget and actual for each category
+SELECT 
+    Department,
+    Category,
+    SUM(BudgetAmount) AS TotalBudget,
+    SUM(ActualAmount) AS TotalActual,
+    (SUM(ActualAmount) / SUM(BudgetAmount)) * 100 AS BudgetVariancePercentage
+FROM BudgetData
+GROUP BY Department, Category
+ORDER BY BudgetVariancePercentage DESC;
